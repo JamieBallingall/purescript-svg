@@ -1,28 +1,37 @@
 module Xml where
 
-import Prelude ((<$>), (<>), ($))
+import Prelude ((<$>), (<>), ($), (-), (*), (+))
 import Data.Foldable
+import Data.Array
 
 data XmlElement = XmlElement String (Array XmlAttribute) (Array XmlElement)
 data XmlAttribute = XmlAttribute String String
 data XmlQuote = SingleQuote | DoubleQuote
+data XmlStyle = XmlStyle XmlQuote Int
 
-xml2string :: XmlQuote -> XmlElement -> String
-xml2string quote (XmlElement tag attributes children) =
-  "<" <>
-  tag <>
-  fold (attribute2string quote <$> attributes) <>
-  ">\n" <>
-  (intercalate "\n" $ (xml2string quote) <$> children) <>
-  "\n</" <>
-  tag <>
-  ">"
+xml2string ∷ XmlStyle → XmlElement → String
+xml2string (XmlStyle SingleQuote indentSpaces) element = xml2stringIndented 0 indentSpaces "'" element
+xml2string (XmlStyle DoubleQuote indentSpaces) element = xml2stringIndented 0 indentSpaces "\"" element
 
-attribute2string :: XmlQuote -> XmlAttribute -> String
+xml2stringIndented ∷ Int → Int → String → XmlElement → String
+xml2stringIndented indent spaces quote (XmlElement tag attributes children) =
+  indentation <> "<" <> tag <> attributeString <> ">" <> childrenString <> "</" <> tag <> ">"
+  where
+    indentation = repeat (spaces * indent) " "
+    childrenString = (if (null children) then "" else ("\n" <> (intercalate "\n" $ (xml2stringIndented (indent + 1) spaces quote) <$> children) <> "\n"))
+    attributeString = fold (attribute2string quote <$> attributes)
+
+attribute2string ∷ String → XmlAttribute → String
 attribute2string quote (XmlAttribute lhs rhs) =
-  " " <> lhs <> "=" <> q <> rhs <> q
-  where q = quote2string quote
+  " " <> lhs <> "=" <> quote <> rhs <> quote
 
-quote2string :: XmlQuote -> String
+quote2string ∷ XmlQuote → String
 quote2string SingleQuote = "'"
 quote2string DoubleQuote = "\""
+
+repeat ∷ Int → String → String
+repeat 0 _ = ""
+repeat n value = value <> repeat (n - 1) value
+
+defaultStyle ∷ XmlStyle
+defaultStyle = XmlStyle DoubleQuote 3
